@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://localhost:3100/loki/api/v1/push        #localhost要指到容器的IP
+
+scrape_configs:
+  - job_name: snort3_json_pipeline
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: snort3         
+          env: production     
+          __path__: /var/log/snort/alert_json.txt
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            action: action
+            class: class
+            msg: msg
+            proto: proto
+            src_addr: src_addr
+            dst_addr: dst_addr
+            src_port: src_port
+            dst_port: dst_port
+
+      - labels:
+          action:
+          class:
+          proto:
+
+      - template:
+          source: output_msg
+          template: '[{{.action}}] {{.proto}} {{.src_addr}}:{{.src_port}} -> {{.dst_addr}}:{{.dst_port}} | {{.msg}}'
+
+      - output:
+          source: output_msg
